@@ -1,45 +1,62 @@
 import { json } from 'body-parser';
+import { Request, Response } from 'express';
 
 import 'reflect-metadata';
 import dotenv from 'dotenv';
 import { InversifyExpressServer } from 'inversify-express-utils';
-
-// import { createKafkaClient, Producer, Consumer } from '@marta/eventbus/dist';
-
-// import { getDataSource } from './typeormconfig';
+import cors from 'cors';
 
 import { diContainer } from '../inversify.config';
-// import { TYPES } from './lib';
-// import { exampleEventHandler } from './events/handlers';
+import { TYPES } from './lib';
+import './controllers';
+
+import { getDataSource } from './typeormconfig';
+
+import { JwtServiceImpl, PasswordManagerServiceImpl, UserServiceImpl } from './services';
+import { UserRepositoryImpl } from './repositories';
+import { JwtAuthMiddleware } from './middlewares';
+import { handlers } from './errors';
 
 dotenv.config();
 
 (async () => {
     try {
-        // Create Kafka producer and consumer instance
-        // const kafkaClient = await createKafkaClient();
-        // const producer = new Producer(kafkaClient);
-        // const consumer = new Consumer(kafkaClient, 'test-service-group');
-
-        // Subscribe to all the topics the service is interested in
-        // await consumer.subscribe([
-        //     { topic: 'test-topic', eventHandler: exampleEventHandler },
-        // ]);
-
-        // Bind producer instance to the DI container so it can be accessed from anywhere
-        // diContainer.bind(TYPES.producer).toConstantValue(producer);
+        diContainer.bind(TYPES.JwtService).to(JwtServiceImpl);
+        diContainer.bind(TYPES.PasswordManagerService).to(PasswordManagerServiceImpl);
+        diContainer.bind(TYPES.JwtAuthMiddleware).to(JwtAuthMiddleware);
+        diContainer.bind(TYPES.UserRepository).toConstantValue(UserRepositoryImpl)
+        diContainer.bind(TYPES.UserService).to(UserServiceImpl);
 
         // DB setup
-        // const dataSource = await getDataSource();
-        // await dataSource.initialize();
-        // diContainer.bind(TYPES.DB).toConstantValue(dataSource);
+        const dataSource = getDataSource();
+        if (!dataSource.isInitialized) {
+            await dataSource.initialize();
+        }
+        diContainer.bind(TYPES.DB).toConstantValue(dataSource);
 
         // Create app server
         const app = new InversifyExpressServer(diContainer, null, {
             rootPath: '/partner-app/api',
         });
+
+        app.setErrorConfig((expressApp) => {
+            for (const handler of handlers) {
+                expressApp.use(handler);
+            }
+
+            expressApp.use((err: Error, _req: Request, res: Response) => {
+                if(!res.headersSent) {
+                    res.status(500).json({ message: 'Internal server error' });
+
+                    console.error('Undefined error!');
+                    console.error(err);
+                }
+            });
+        });
+
         app.setConfig(app => {
             app.use(json());
+            app.use(cors());
         });
 
         const server = app.build();

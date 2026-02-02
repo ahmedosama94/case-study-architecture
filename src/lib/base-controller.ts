@@ -9,6 +9,8 @@ export abstract class BaseController extends BaseHttpController {
     // service health check
     @httpGet('/')
     public async healthCheck() {
+        // throw new Error('fff');
+
         return this.json({ message: 'Service is up and running' }, 200);
     }
 }

@@ -1,0 +1,26 @@
+{
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "transform": {
+    "^.+\\.(t|j)sx?$": [
+      "ts-jest",
+      {
+        "tsconfig": "tsconfig.jest.json"
+      }
+    ]
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!@faker-js/faker)"
+  ],
+  "roots": [
+    "<rootDir>/src"
+  ],
+  "testMatch": [
+    "**/?(*.)+(spec|test).ts"
+  ],
+  "moduleFileExtensions": [
+    "ts",
+    "js",
+    "json"
+  ]
+}
